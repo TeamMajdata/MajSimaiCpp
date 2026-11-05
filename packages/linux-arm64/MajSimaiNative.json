@@ -1,0 +1,32 @@
+{
+  "kind": "static",
+  "runtimeIdentifier": "linux-arm64",
+  "library": "lib/MajSimai.a",
+  "runtimeLibrary": null,
+  "dependencies": [
+    "lib/aot/libSystem.Native.a",
+    "lib/aot/libSystem.Globalization.Native.a",
+    "lib/aot/libSystem.IO.Compression.Native.a",
+    "lib/aot/libSystem.Net.Security.Native.a",
+    "lib/aot/libSystem.Security.Cryptography.Native.OpenSsl.a",
+    "lib/aot/libbootstrapperdll.o",
+    "lib/aot/libRuntime.WorkstationGC.a",
+    "lib/aot/libeventpipe-disabled.a",
+    "lib/aot/libstandalonegc-disabled.a",
+    "lib/aot/libaotminipal.a",
+    "lib/aot/libstdc++compat.a",
+    "lib/aot/libz.a",
+    "lib/aot/libbrotlienc.a",
+    "lib/aot/libbrotlidec.a",
+    "lib/aot/libbrotlicommon.a"
+  ],
+  "systemLibraries": [
+    "dl",
+    "rt",
+    "m"
+  ],
+  "linkOptions": [
+    "-pthread"
+  ],
+  "compileDefinitions": []
+}

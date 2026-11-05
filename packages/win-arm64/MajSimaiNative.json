@@ -1,0 +1,39 @@
+{
+  "kind": "static",
+  "runtimeIdentifier": "win-arm64",
+  "library": "lib/MajSimai.lib",
+  "runtimeLibrary": null,
+  "dependencies": [
+    "lib/aot/dllmain.obj",
+    "lib/aot/bootstrapperdll.obj",
+    "lib/aot/Runtime.WorkstationGC.lib",
+    "lib/aot/eventpipe-disabled.lib",
+    "lib/aot/standalonegc-disabled.lib",
+    "lib/aot/aotminipal.lib",
+    "lib/aot/zlibstatic.lib",
+    "lib/aot/brotlicommon.lib",
+    "lib/aot/brotlienc.lib",
+    "lib/aot/brotlidec.lib",
+    "lib/aot/System.Globalization.Native.Aot.lib",
+    "lib/aot/System.IO.Compression.Native.Aot.lib"
+  ],
+  "systemLibraries": [
+    "advapi32.lib",
+    "bcrypt.lib",
+    "crypt32.lib",
+    "iphlpapi.lib",
+    "kernel32.lib",
+    "mswsock.lib",
+    "ncrypt.lib",
+    "normaliz.lib",
+    "ntdll.lib",
+    "ole32.lib",
+    "oleaut32.lib",
+    "secur32.lib",
+    "user32.lib",
+    "version.lib",
+    "ws2_32.lib"
+  ],
+  "linkOptions": [],
+  "compileDefinitions": []
+}

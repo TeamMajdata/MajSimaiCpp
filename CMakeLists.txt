@@ -1,149 +1,63 @@
+# The root of the MajSimaiCpp repository (https://github.com/TeamMajdata/MajSimaiCpp).
+#
+# The release workflow of MajSimai (.github/workflows/main.yml) copies this file there with a static package per
+# runtime identifier in packages/<rid>, each made by tools/build-cpp-package.py. This file picks the package of the
+# target platform, so a C++17 program only needs:
+#
+#     add_subdirectory(MajSimaiCpp)
+#     target_link_libraries(app PRIVATE MajSimai::MajSimaiCpp)
+#
+# Set MAJSIMAI_RUNTIME_IDENTIFIER (such as win-x64) to choose the package yourself.
 cmake_minimum_required(VERSION 3.15)
 
-project(MajSimaiCpp VERSION 1.0.0 LANGUAGES CXX)
+project(MajSimaiCppPackages LANGUAGES CXX)
 
-set(CMAKE_CXX_STANDARD 17)
-set(CMAKE_CXX_STANDARD_REQUIRED ON)
-set(CMAKE_MSVC_RUNTIME_LIBRARY "MultiThreaded$<$<CONFIG:Debug>:Debug>")
+set(MAJSIMAI_RUNTIME_IDENTIFIER "" CACHE STRING
+    "The .NET runtime identifier of the MajSimai package to link, such as win-x64. Default: the target platform.")
 
-if(CMAKE_SYSTEM_NAME STREQUAL "Windows")
-    set(OS_PREFIX "win")
-    set(LIB_PREFIX "")
-    set(LINK_EXT ".lib")
-    set(RUN_EXT ".dll")
-    set(USER_HOME_DIR "$ENV{USERPROFILE}")
-
-elseif(CMAKE_SYSTEM_NAME STREQUAL "Darwin")
-    set(OS_PREFIX "mac")
-    set(LIB_PREFIX "lib")
-    set(LINK_EXT ".dylib")
-    set(RUN_EXT ".dylib")
-    set(USER_HOME_DIR "$ENV{HOME}")
-
-elseif(CMAKE_SYSTEM_NAME STREQUAL "Linux")
-    set(OS_PREFIX "linux")
-    set(LIB_PREFIX "lib")
-    set(LINK_EXT ".so")
-    set(RUN_EXT ".so")
-    set(USER_HOME_DIR "$ENV{HOME}")
-
-elseif(CMAKE_SYSTEM_NAME STREQUAL "Android")
-    set(OS_PREFIX "android")
-    set(LIB_PREFIX "lib")
-    set(LINK_EXT ".so")
-    set(RUN_EXT ".so")
-    set(USER_HOME_DIR "$ENV{HOME}")
-
-elseif(CMAKE_SYSTEM_NAME STREQUAL "iOS")
-    set(OS_PREFIX "ios")
-    set(LIB_PREFIX "lib")
-    set(LINK_EXT ".dylib")
-    set(RUN_EXT ".dylib")
-    set(USER_HOME_DIR "$ENV{HOME}")
-
+if(MAJSIMAI_RUNTIME_IDENTIFIER)
+    set(MAJSIMAI_PACKAGE_RID "${MAJSIMAI_RUNTIME_IDENTIFIER}")
 else()
-    message(FATAL_ERROR
-        "OS not supported: ${CMAKE_SYSTEM_NAME}"
-    )
-endif()
-
-if(CMAKE_SYSTEM_NAME STREQUAL "Windows")
-
-    if(CMAKE_VS_PLATFORM_NAME MATCHES "ARM64")
-        set(ARCH_PREFIX "arm64")
-
-    elseif(CMAKE_VS_PLATFORM_NAME MATCHES "x64")
-        set(ARCH_PREFIX "x64")
-
-    elseif(CMAKE_VS_PLATFORM_NAME MATCHES "Win32")
-        set(ARCH_PREFIX "x86")
-
-    elseif(CMAKE_VS_PLATFORM_NAME MATCHES "ARM")
-        set(ARCH_PREFIX "arm")
-
+    if(CMAKE_SYSTEM_NAME STREQUAL "Windows")
+        set(MAJSIMAI_PACKAGE_OS "win")
+    elseif(CMAKE_SYSTEM_NAME STREQUAL "Darwin")
+        set(MAJSIMAI_PACKAGE_OS "osx")
+    elseif(CMAKE_SYSTEM_NAME STREQUAL "Linux")
+        set(MAJSIMAI_PACKAGE_OS "linux")
     else()
-        message(FATAL_ERROR
-            "Unknown Windows platform: ${CMAKE_VS_PLATFORM_NAME}"
-        )
+        message(FATAL_ERROR "MajSimaiCpp has no package for ${CMAKE_SYSTEM_NAME}; set MAJSIMAI_RUNTIME_IDENTIFIER.")
     endif()
 
-else()
-
-    if(CMAKE_SYSTEM_PROCESSOR MATCHES "^(arm64|aarch64|ARM64)")
-        set(ARCH_PREFIX "arm64")
-
-    elseif(CMAKE_SYSTEM_PROCESSOR MATCHES "^(x86_64|AMD64|amd64)")
-        set(ARCH_PREFIX "x64")
-
-    elseif(CMAKE_SYSTEM_PROCESSOR MATCHES "^(i[3-6]86|x86)")
-        set(ARCH_PREFIX "x86")
-
+    # MSVC names the architecture it compiles for; elsewhere the target processor does.
+    if(MSVC AND CMAKE_CXX_COMPILER_ARCHITECTURE_ID)
+        set(MAJSIMAI_PACKAGE_ARCH "${CMAKE_CXX_COMPILER_ARCHITECTURE_ID}")
+    elseif(APPLE AND CMAKE_OSX_ARCHITECTURES)
+        list(LENGTH CMAKE_OSX_ARCHITECTURES MAJSIMAI_OSX_ARCHITECTURE_COUNT)
+        if(NOT MAJSIMAI_OSX_ARCHITECTURE_COUNT EQUAL 1)
+            message(FATAL_ERROR "MajSimaiCpp links one architecture, but CMAKE_OSX_ARCHITECTURES is '${CMAKE_OSX_ARCHITECTURES}'.")
+        endif()
+        set(MAJSIMAI_PACKAGE_ARCH "${CMAKE_OSX_ARCHITECTURES}")
     else()
-        message(FATAL_ERROR
-            "Unknown processor: ${CMAKE_SYSTEM_PROCESSOR}"
-        )
+        set(MAJSIMAI_PACKAGE_ARCH "${CMAKE_SYSTEM_PROCESSOR}")
     endif()
 
+    string(TOLOWER "${MAJSIMAI_PACKAGE_ARCH}" MAJSIMAI_PACKAGE_ARCH)
+    if(MAJSIMAI_PACKAGE_ARCH MATCHES "^(x64|x86_64|amd64)$")
+        set(MAJSIMAI_PACKAGE_ARCH "x64")
+    elseif(MAJSIMAI_PACKAGE_ARCH MATCHES "^(arm64|aarch64)$")
+        set(MAJSIMAI_PACKAGE_ARCH "arm64")
+    else()
+        message(FATAL_ERROR "MajSimaiCpp has no package for the processor '${MAJSIMAI_PACKAGE_ARCH}'; set MAJSIMAI_RUNTIME_IDENTIFIER.")
+    endif()
+
+    set(MAJSIMAI_PACKAGE_RID "${MAJSIMAI_PACKAGE_OS}-${MAJSIMAI_PACKAGE_ARCH}")
 endif()
 
-set(MAJSIMAI_LINK_FILE "${CMAKE_CURRENT_SOURCE_DIR}/external/MajSimai/lib/${OS_PREFIX}-${ARCH_PREFIX}/${LIB_PREFIX}MajSimai${LINK_EXT}")
-
-file(TO_CMAKE_PATH "${USER_HOME_DIR}" USER_HOME_DIR)
-set(DOTNET_ILC_SDK "${USER_HOME_DIR}/.nuget/packages/runtime.${OS_PREFIX}-${ARCH_PREFIX}.microsoft.dotnet.ilcompiler/9.0.16/sdk")
-
-message(DEBUG "CMAKE_SYSTEM_NAME=${CMAKE_SYSTEM_NAME}")
-message(DEBUG "CMAKE_SYSTEM_PROCESSOR=${CMAKE_SYSTEM_PROCESSOR}")
-message(DEBUG "ARCH_PREFIX=${ARCH_PREFIX}")
-message(DEBUG "MAJSIMAI_LINK_FILE=${MAJSIMAI_LINK_FILE}")
-message(DEBUG "DOTNET_ILC_SDK=${DOTNET_ILC_SDK}")
-
-set(SOURCES
-    src/SimaiChartView.cpp
-    src/SimaiFileView.cpp
-    src/SimaiNoteView.cpp
-    src/SimaiParser.cpp
-    src/SimaiTimingPointView.cpp
-)
-
-add_library(MajSimaiCpp SHARED ${SOURCES})
-
-target_include_directories(MajSimaiCpp PRIVATE ${CMAKE_CURRENT_SOURCE_DIR}/include)
-
-if(ARCH_PREFIX MATCHES "arm64")
-    target_link_libraries(MajSimaiCpp PRIVATE 
-        "${DOTNET_ILC_SDK}/Runtime.WorkstationGC.lib"
-        "${DOTNET_ILC_SDK}/eventpipe-disabled.lib"
-        "${DOTNET_ILC_SDK}/standalonegc-disabled.lib"
-        "${DOTNET_ILC_SDK}/zlibstatic.lib"
-        "${DOTNET_ILC_SDK}/System.Globalization.Native.Aot.lib"
-        "${DOTNET_ILC_SDK}/System.IO.Compression.Native.Aot.lib"
-
-        "${MAJSIMAI_LINK_FILE}"
-        Advapi32.lib Bcrypt.lib Crypt32.lib Iphlpapi.lib Normaliz.lib Ncrypt.lib NtDll.lib OLE32.lib OleAut32.lib User32.lib Ws2_32.lib
-    )
-
-else()
-    target_link_libraries(MajSimaiCpp PRIVATE 
-        "${DOTNET_ILC_SDK}/Runtime.WorkstationGC.lib"
-        "${DOTNET_ILC_SDK}/eventpipe-disabled.lib"
-        "${DOTNET_ILC_SDK}/Runtime.VxsortEnabled.lib"
-        "${DOTNET_ILC_SDK}/standalonegc-disabled.lib"
-        "${DOTNET_ILC_SDK}/zlibstatic.lib"
-        "${DOTNET_ILC_SDK}/System.Globalization.Native.Aot.lib"
-        "${DOTNET_ILC_SDK}/System.IO.Compression.Native.Aot.lib"
-
-        "${MAJSIMAI_LINK_FILE}"
-        Advapi32.lib Bcrypt.lib Crypt32.lib Iphlpapi.lib Normaliz.lib Ncrypt.lib NtDll.lib OLE32.lib OleAut32.lib User32.lib Ws2_32.lib
-    )
-
+set(MAJSIMAI_PACKAGE_DIRECTORY "${CMAKE_CURRENT_SOURCE_DIR}/packages/${MAJSIMAI_PACKAGE_RID}")
+if(NOT EXISTS "${MAJSIMAI_PACKAGE_DIRECTORY}/CMakeLists.txt")
+    file(GLOB MAJSIMAI_AVAILABLE_PACKAGES RELATIVE "${CMAKE_CURRENT_SOURCE_DIR}/packages" "${CMAKE_CURRENT_SOURCE_DIR}/packages/*")
+    message(FATAL_ERROR "MajSimaiCpp has no package for ${MAJSIMAI_PACKAGE_RID}. Available: ${MAJSIMAI_AVAILABLE_PACKAGES}.")
 endif()
 
-if(APPLE)
-    set_target_properties(MySimaiCpp PROPERTIES BUILD_RPATH "@executable_path")
-elseif(UNIX AND NOT APPLE)
-    set_target_properties(MySimaiCpp PROPERTIES BUILD_RPATH "$ORIGIN")
-endif()
-
-if(MSVC)
-    target_compile_options(MajSimaiCpp PRIVATE /utf-8)
-endif()
+message(STATUS "MajSimaiCpp: linking the static package for ${MAJSIMAI_PACKAGE_RID}")
+add_subdirectory("${MAJSIMAI_PACKAGE_DIRECTORY}" "${CMAKE_CURRENT_BINARY_DIR}/packages/${MAJSIMAI_PACKAGE_RID}")
